@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Goong Map</title>
+    <script src='https://cdn.jsdelivr.net/npm/@goongmaps/goong-js@1.0.9/dist/goong-js.js'></script>
+    <link href='https://cdn.jsdelivr.net/npm/@goongmaps/goong-js@1.0.9/dist/goong-js.css' rel='stylesheet' />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+
+        /* .mapboxgl-ctrl-top-right {
+            display: flex;
+            align-items: center;
+        } */
+    </style>
+</head>
+
+<body>
+
+    <!-- Load the `goong-geocoder` plugin. -->
+    <script src="https://cdn.jsdelivr.net/npm/@goongmaps/goong-geocoder@1.1.1/dist/goong-geocoder.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@goongmaps/goong-geocoder@1.1.1/dist/goong-geocoder.css" rel="stylesheet"
+        type="text/css" />
+    <!-- Promise polyfill script is required -->
+    <!-- to use Goong Geocoder in IE 11. -->
+    <script src="https://cdn.jsdelivr.net/npm/es6-promise@4/dist/es6-promise.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/es6-promise@4/dist/es6-promise.auto.min.js"></script>
+
+    <!-- Mapbox -->
+    <!-- <script
+        src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.1.0/mapbox-gl-directions.js"></script>
+    <link rel="stylesheet"
+        href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.1.0/mapbox-gl-directions.css"
+        type="text/css"> -->
+
+    <script src="https://cdn.jsdelivr.net/npm/@mapbox/polyline/src/polyline.js"></script>
+    <script src="https://unpkg.com/@goongmaps/goong-sdk/umd/goong-sdk.min.js"></script>
+
+    <div id='map' style='width: 100vw; height: 100vh;'></div>
+
+    <script>
+
+        function success(pos) {
+            var crd = pos.coords;
+            map.setCenter([crd.longitude, crd.latitude]);
+        }
+
+        navigator.geolocation.getCurrentPosition(success);
+
+
+        goongjs.accessToken = '4dAgWahZ3jW5LsZCiYikMTvVUOYpd2jcmxz3kyLA';
+        var map = new goongjs.Map({
+            container: 'map',
+            style: 'https://tiles.goong.io/assets/goong_map_web.json',
+            zoom: 14
+        });
+
+        map.on('load', function () {
+            var layers = map.getStyle().layers;
+            // Find the index of the first symbol layer in the map style
+            var firstSymbolId;
+            for (var i = 0; i < layers.length; i++) {
+                if (layers[i].type === 'symbol') {
+                    firstSymbolId = layers[i].id;
+                    break;
+                }
+            }
+            // Initialize goongClient with an API KEY
+            var goongClient = goongSdk({
+                accessToken: 'oC8CNdh20xrH8Dpm0SIkZYQqBijW847QWVmBE0DB'
+            });
+            // Get Directions
+            goongClient.directions
+                .getDirections({
+                    origin: '20.981971,105.864323',
+                    destination: '21.031011,105.783206',
+                    vehicle: 'car'
+                })
+                .send()
+                .then(function (response) {
+                    var directions = response.body;
+                    var route = directions.routes[0];
+
+                    var geometry_string = route.overview_polyline.points;
+                    var geoJSON = polyline.toGeoJSON(geometry_string);
+                    map.addSource('route', {
+                        'type': 'geojson',
+                        'data': geoJSON
+                    });
+                    // Add route layer below symbol layers
+                    map.addLayer(
+                        {
+                            'id': 'route',
+                            'type': 'line',
+                            'source': 'route',
+                            'layout': {
+                                'line-join': 'round',
+                                'line-cap': 'round'
+                            },
+                            'paint': {
+                                'line-color': '#1e88e5',
+                                'line-width': 8
+                            }
+                        },
+                        firstSymbolId
+                    );
+                });
+        });
+
+        // Add geolocate control to the map.
+        const geo = map.addControl(
+            new goongjs.GeolocateControl({
+                positionOptions: {
+                    enableHighAccuracy: true
+                },
+                trackUserLocation: true
+            })
+        );
+
+        // Add the control to the map.
+        map.addControl(
+            new GoongGeocoder({
+                accessToken: 'oC8CNdh20xrH8Dpm0SIkZYQqBijW847QWVmBE0DB',
+                goongjs: goongjs
+            }),
+            'top-left'
+        );
+
+
+
+        map.on('geolocate', function (data) {
+            console.log({ data })
+        })
+
+        // Add zoom and rotation controls to the map.
+        map.addControl(new goongjs.NavigationControl());
+
+        // Add direction
+        // map.addControl(
+        //     new MapboxDirections({
+        //         accessToken: "pk.eyJ1IjoiYW5oa2lldDEwMTAiLCJhIjoiY2wzY2ZzdTZ1MDZrZjNjbDdmcnRkaXZmNiJ9.psDVDMwID-8GtYMH1xXltA"
+        //     }),
+        //     'top-left'
+        // );
+    </script>
+</body>
+
+</html>
